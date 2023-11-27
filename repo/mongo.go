@@ -56,12 +56,12 @@ func CloseMongoCursor(cursor *mongo.Cursor) {
 	}
 }
 
-func Find(client *mongo.Client, dbName string, collName string, filter interface{}) (*mongo.Cursor, error) {
+func Find(client *mongo.Client, dbName string, collName string, filter interface{}, opts *options.FindOptions) (*mongo.Cursor, error) {
 	collection := client.Database(dbName).Collection(collName)
-	cur, err := collection.Find(context.TODO(), filter)
+	cur, err := collection.Find(context.TODO(), filter, opts)
 	if err != nil {
 		log.Printf("Failed to find documents: %+v", err)
-		log.Printf("Database Name: %s, Collection Name: %s, Filter: %+v", dbName, collName, filter)
+		log.Printf("Database Name: %s, Collection Name: %s, Filter: %+v, Options: %+v", dbName, collName, filter, opts)
 		return nil, err
 	}
 	return cur, nil
@@ -70,4 +70,9 @@ func Find(client *mongo.Client, dbName string, collName string, filter interface
 func FindOne(client *mongo.Client, dbName string, collName string, filter interface{}) *mongo.SingleResult {
 	collection := client.Database(dbName).Collection(collName)
 	return collection.FindOne(context.TODO(), filter)
+}
+
+func Update(client *mongo.Client, dbName string, collName string, filter interface{}, update interface{}) (*mongo.UpdateResult, error) {
+	collection := client.Database(dbName).Collection(collName)
+	return collection.UpdateOne(context.TODO(), filter, update)
 }
