@@ -14,7 +14,7 @@ class JumpItCrawler(BaseCrawler):
     def crawl(self):
         job_infos = []
         self.driver.get(self.url)
-        self.scroll_page(10, 3)
+        self.scroll_page(0, 3)
 
         cls_name = 'sc-c8169e0e-0.gOSXGP'
         elements = self.driver.find_elements(By.CLASS_NAME, cls_name)
@@ -28,6 +28,7 @@ class JumpItCrawler(BaseCrawler):
                 print(e)
                 continue
 
+            JumpItCrawler.add_additional_preferences(job_info)
             job_infos.append(job_info)
 
         self.extract_job_info_detail(job_infos)
@@ -43,6 +44,11 @@ class JumpItCrawler(BaseCrawler):
                 print(f"There is already duplicated job info with same link({job_info['link']})")
                 continue
         repo.mongo.close_mongo_client(client)
+
+    @staticmethod
+    def add_additional_preferences(job_info):
+        job_info['hasBeenViewed'] = False
+        job_info['isFavorite'] = False
 
     def extract_job_info_detail(self, job_infos):
         for job_info in job_infos:
