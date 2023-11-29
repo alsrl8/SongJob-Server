@@ -2,6 +2,7 @@ import pymongo.errors
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 
+import repo
 from crawlers import BaseCrawler
 
 
@@ -14,10 +15,9 @@ class JumpItCrawler(BaseCrawler):
     def crawl(self):
         job_infos = []
         self.driver.get(self.url)
-        self.scroll_page(20, 3)
+        self.scroll_page(0, 3)
 
-        cls_name = 'sc-c8169e0e-0.gOSXGP'
-        elements = self.driver.find_elements(By.CLASS_NAME, cls_name)
+        elements = self.get_body_tags()
         for e in elements:
             try:
                 job_info = self.extract_job_info(e)
@@ -33,7 +33,20 @@ class JumpItCrawler(BaseCrawler):
 
         self.extract_job_info_detail(job_infos)
 
-        import repo
+        from message import Producer
+
+        producer = Producer()
+        for job_info in job_infos:
+            producer.send(job_info)
+        producer.close()
+
+    def get_body_tags(self):
+        cls_name = 'sc-c8169e0e-0.gOSXGP'
+        elements = self.driver.find_elements(By.CLASS_NAME, cls_name)
+        return elements
+
+    @staticmethod
+    def store_crawled_data_to_mongo(job_infos):
         db_name = 'job'
         coll_name = 'job_info'
         client = repo.mongo.get_mongo_client()
