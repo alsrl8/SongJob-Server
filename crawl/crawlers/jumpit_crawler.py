@@ -1,21 +1,34 @@
+import kafka.errors
 import pymongo.errors
+from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 
 import repo
 from crawlers import BaseCrawler
+from message import Producer
 
 
 class JumpItCrawler(BaseCrawler):
     url = 'https://www.jumpit.co.kr/positions?sort=rsp_rate'
+    scroll_num: int
 
-    def __init__(self, options=None):
+    def __init__(self, scroll_num: int = 0, options=None, headless=True):
         super().__init__(options)
+        self.scroll_num = scroll_num
+        self.headless = headless
+
+    def setup(self):
+        chrome_options = Options()
+        if self.headless:
+            chrome_options.add_argument('--headless')
+        self.driver = webdriver.Chrome(options=chrome_options)
 
     def crawl(self):
         job_infos = []
         self.driver.get(self.url)
-        self.scroll_page(0, 3)
+        self.scroll_page(self.scroll_num, 3)
 
         elements = self.get_body_tags()
         for e in elements:
@@ -32,13 +45,21 @@ class JumpItCrawler(BaseCrawler):
             job_infos.append(job_info)
 
         self.extract_job_info_detail(job_infos)
+        JumpItCrawler.send_to_message_queue(job_infos)
 
-        from message import Producer
+    @staticmethod
+    def send_to_message_queue(job_infos):
+        print(f'Sending crawled job infos to kafka container. {len(job_infos)=}')
+        try:
+            producer = Producer()
+        except kafka.errors.NoBrokersAvailable:
+            print("Kafka container isn't running")
+            return
 
-        producer = Producer()
         for job_info in job_infos:
             producer.send(job_info)
         producer.close()
+        print(f'Send job posts to message queue. {len(job_infos)=}')
 
     def get_body_tags(self):
         cls_name = 'sc-c8169e0e-0.gOSXGP'

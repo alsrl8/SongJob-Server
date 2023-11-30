@@ -7,10 +7,14 @@ from crawlers import JumpItCrawler
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Run web crawlers for job listings.")
+    parser.add_argument("--scroll-num", type=int, default=0,
+                        help="Specify the number of times to scroll (integer).")
     parser.add_argument("--crawler", choices=["saramin", "jobkorea", "jumpit"], required=True,
                         help="Specify which crawler to run.")
     parser.add_argument("--output", choices=["csv", "json"], default="json",
                         help="Specify the output format.")
+    parser.add_argument("--headless", type=bool, default=True,
+                        help="Set to True to run the browser in headless mode (without a GUI), or False to run with a GUI.")
 
     args = parser.parse_args()
     return args
@@ -26,7 +30,7 @@ def run_crawler(args):
         pass
         # crawler = JobKoreaCrawler(options={'output_format': args.output})
     elif args.crawler == "jumpit":
-        crawler = JumpItCrawler(options={'output_format': args.output})
+        crawler = JumpItCrawler(scroll_num=args.scroll_num, options={'output_format': args.output}, headless=args.headless)
 
     if crawler:
         crawler.setup()
