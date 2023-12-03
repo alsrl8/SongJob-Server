@@ -13,7 +13,7 @@ def parse_arguments():
                         help="Specify which crawler to run.")
     parser.add_argument("--output", choices=["csv", "json"], default="json",
                         help="Specify the output format.")
-    parser.add_argument("--headless", type=bool, default=True,
+    parser.add_argument("--headless", type=bool, default=False,
                         help="Set to True to run the browser in headless mode (without a GUI), or False to run with a GUI.")
 
     args = parser.parse_args()
@@ -30,6 +30,7 @@ def run_crawler(args):
         pass
         # crawler = JobKoreaCrawler(options={'output_format': args.output})
     elif args.crawler == "jumpit":
+        print(args.headless)
         crawler = JumpItCrawler(scroll_num=args.scroll_num, options={'output_format': args.output}, headless=args.headless)
 
     if crawler:
