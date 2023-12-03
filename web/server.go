@@ -5,6 +5,7 @@ import (
 	"SongJob_Server/info"
 	"SongJob_Server/repo"
 	"context"
+	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -31,6 +32,7 @@ func NewRouter() *gin.Engine {
 	r.PUT("/add-to-favorites", addToFavorites)
 	r.PUT("/remove-from-favorites", removeFromFavorites)
 	r.GET("/search-keyword", searchKeyword)
+	r.GET("/search-keyword-elastic", searchKeywordElastic)
 	return r
 }
 
@@ -218,20 +220,20 @@ func searchKeyword(c *gin.Context) {
 		return
 	}
 
-	regexPattern := bson.M{"$regex": keyword, "$options": "i"}
-	query := bson.M{
-		"$or": []bson.M{
-			{"name": regexPattern},
-			{"techniques": bson.M{"$elemMatch": regexPattern}},
-		},
-	}
-
 	client, err := repo.GetMongoClient()
 	if err != nil {
 		c.JSON(int(StatusInternalServerError), gin.H{
 			"message": "Can't access to database",
 		})
 		return
+	}
+
+	regexPattern := bson.M{"$regex": keyword, "$options": "i"}
+	query := bson.M{
+		"$or": []bson.M{
+			{"name": regexPattern},
+			{"techniques": bson.M{"$elemMatch": regexPattern}},
+		},
 	}
 
 	find, err := repo.Find(
@@ -261,4 +263,28 @@ func searchKeyword(c *gin.Context) {
 		jobPosts = append(jobPosts, result)
 	}
 	c.JSON(int(StatusOK), jobPosts)
+}
+
+// searchKeywordElastic GET("/search-keyword-elastic") 엔드포인트
+func searchKeywordElastic(c *gin.Context) {
+	keyword := c.Query("keyword")
+	if keyword == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Keyword is required",
+		})
+		return
+	}
+
+	client := repo.NewElasticSearchClient()
+	query := fmt.Sprintf(`{ "query": { "multi_match": { "query": "%s", "fields": ["*"] } } }`, keyword)
+	documents, err := client.SearchDocuments("job_info", query)
+	if err != nil {
+		c.JSON(int(StatusInternalServerError), gin.H{
+			"message": "Error searching ElasticSearch",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, documents)
 }

@@ -88,10 +88,10 @@ func (es *ElasticSearchClient) IndexDocuments(indexName string, document interfa
 
 func (es *ElasticSearchClient) SearchAllDocuments(indexName string) ([]map[string]interface{}, error) {
 	query := `{ "query": { "match_all": {} } }`
-	return es.SearchDocument(indexName, query)
+	return es.SearchDocuments(indexName, query)
 }
 
-func (es *ElasticSearchClient) SearchDocument(indexName string, query string) ([]map[string]interface{}, error) {
+func (es *ElasticSearchClient) SearchDocuments(indexName string, query string) ([]map[string]interface{}, error) {
 	res, err := es.instance.Search(
 		es.instance.Search.WithIndex(indexName),
 		es.instance.Search.WithBody(strings.NewReader(query)),
