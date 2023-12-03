@@ -30,6 +30,7 @@ func NewRouter() *gin.Engine {
 	r.GET("/favorite-job-posts", favoriteJobPosts)
 	r.PUT("/add-to-favorites", addToFavorites)
 	r.PUT("/remove-from-favorites", removeFromFavorites)
+	r.GET("/search-keyword", searchKeyword)
 	return r
 }
 
@@ -205,4 +206,59 @@ func removeFromFavorites(c *gin.Context) {
 		"message": "Favorite updated successfully",
 		"result":  updateResult,
 	})
+}
+
+// searchKeyword GET("/search-keyword") 엔드포인트
+func searchKeyword(c *gin.Context) {
+	keyword := c.Query("keyword")
+	if keyword == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Keyword is required",
+		})
+		return
+	}
+
+	regexPattern := bson.M{"$regex": keyword, "$options": "i"}
+	query := bson.M{
+		"$or": []bson.M{
+			{"name": regexPattern},
+			{"techniques": bson.M{"$elemMatch": regexPattern}},
+		},
+	}
+
+	client, err := repo.GetMongoClient()
+	if err != nil {
+		c.JSON(int(StatusInternalServerError), gin.H{
+			"message": "Can't access to database",
+		})
+		return
+	}
+
+	find, err := repo.Find(
+		client,
+		string(constants.JobDataBaseName),
+		string(constants.JobInfoCollectionName),
+		query,
+		nil,
+	)
+	if err != nil {
+		c.JSON(int(StatusInternalServerError), gin.H{
+			"message": "Error during database search",
+			"error":   err.Error(),
+		})
+		return
+	}
+	defer repo.CloseMongoCursor(find)
+
+	var jobPosts []info.JobPost
+	for find.Next(context.TODO()) {
+		var result info.JobPost
+		err = find.Decode(&result)
+		if err != nil {
+			log.Printf("Failed to decode data to job post: %+v", err)
+			continue
+		}
+		jobPosts = append(jobPosts, result)
+	}
+	c.JSON(int(StatusOK), jobPosts)
 }
