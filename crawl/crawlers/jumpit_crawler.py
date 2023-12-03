@@ -4,6 +4,8 @@ from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as ec
+from selenium.webdriver.support.ui import WebDriverWait
 
 import repo
 from crawlers import BaseCrawler
@@ -27,10 +29,17 @@ class JumpItCrawler(BaseCrawler):
 
     def crawl(self):
         job_infos = []
-        self.driver.get(self.url)
-        self.scroll_page(self.scroll_num, 3)
+        try:
+            self.driver.get(self.url)
+            body_tag_cls_name = 'sc-c8169e0e-0.gOSXGP'
+            WebDriverWait(self.driver, 10).until(ec.presence_of_element_located((By.CLASS_NAME, body_tag_cls_name)))
 
-        elements = self.get_body_tags()
+            self.scroll_page(self.scroll_num, 3)
+            elements = self.get_body_tags(body_tag_cls_name)
+        except Exception as e:
+            print(e)
+            return
+
         for e in elements:
             try:
                 job_info = self.extract_job_info(e)
@@ -61,9 +70,14 @@ class JumpItCrawler(BaseCrawler):
         producer.close()
         print(f'Send job posts to message queue. {len(job_infos)=}')
 
-    def get_body_tags(self):
-        cls_name = 'sc-c8169e0e-0.gOSXGP'
-        elements = self.driver.find_elements(By.CLASS_NAME, cls_name)
+    def get_body_tags(self, cls_name):
+        try:
+            elements = self.driver.find_elements(By.CLASS_NAME, cls_name)
+        except NoSuchElementException as e:
+            print(f"Can't find element with class name({cls_name})")
+            raise e
+        except Exception as e:
+            return e
         return elements
 
     @staticmethod

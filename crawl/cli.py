@@ -30,7 +30,6 @@ def run_crawler(args):
         pass
         # crawler = JobKoreaCrawler(options={'output_format': args.output})
     elif args.crawler == "jumpit":
-        print(args.headless)
         crawler = JumpItCrawler(scroll_num=args.scroll_num, options={'output_format': args.output}, headless=args.headless)
 
     if crawler:
